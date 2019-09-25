@@ -5,6 +5,8 @@
 
 #define I2C_BASE_ADDR           0x2d
 
+#define I2C_TIMEOUT             2
+
 #define PIN_SCL                 9
 #define PIN_SDA                 10
 #define PIN_STBY                2
@@ -56,7 +58,7 @@ static int receive_cmd(uint8_t *buf, uint8_t size)
         I2C1->TXDR = (I2C1->OAR1 & 0xFF) >> 1;
         while(!(I2C1->ISR & I2C_ISR_TXE));
 
-        timeout = 2;
+        timeout = I2C_TIMEOUT;
         while (((I2C1->ISR & I2C_ISR_STOPF) == 0) && (timeout));
         if (!timeout)
             return ERR_TIMEOUT;
@@ -65,7 +67,7 @@ static int receive_cmd(uint8_t *buf, uint8_t size)
     }
 
     /* Receive 1st byte of data */
-    timeout = 4;
+    timeout = 2 * I2C_TIMEOUT;
     while ((I2C1->ISR & I2C_ISR_RXNE) == 0 && 
         (I2C1->ISR & I2C_ISR_STOPF) == 0 && 
         timeout);
@@ -88,7 +90,7 @@ static int receive_cmd(uint8_t *buf, uint8_t size)
             /* Send a reply */
             for (uint8_t i = 0; i < len; i++) {
                 I2C1->TXDR = pbuf[i];
-                timeout = 2;
+                timeout = I2C_TIMEOUT;
                 while(!(I2C1->ISR & I2C_ISR_TXE) && !(I2C1->ISR & I2C_ISR_NACKF) && (timeout));
                 /* Check if master has interrupted the transmission */
                 if ((I2C1->ISR & I2C_ISR_NACKF)) {
@@ -98,8 +100,9 @@ static int receive_cmd(uint8_t *buf, uint8_t size)
                     return ERR_TIMEOUT;
             }
 
-            timeout = 2;
-            while (((I2C1->ISR & I2C_ISR_STOPF) == 0) && (timeout));
+            timeout = I2C_TIMEOUT;
+            while ((I2C1->ISR & I2C_ISR_BUSY) && (I2C1->ISR & I2C_ISR_STOPF) == 0 &&
+                !(I2C1->ISR & I2C_ISR_NACKF) && (timeout));
             if (!timeout)
                 return ERR_TIMEOUT;
 
@@ -111,7 +114,7 @@ static int receive_cmd(uint8_t *buf, uint8_t size)
     }
 
     /* Receive the rest of data bytes */
-    timeout = 2;
+    timeout = I2C_TIMEOUT;
     for (len = 1; len < MAX_PKT_LEN; len++) {
         while ((I2C1->ISR & I2C_ISR_RXNE) == 0 && 
             (I2C1->ISR & I2C_ISR_STOPF) == 0 && 
