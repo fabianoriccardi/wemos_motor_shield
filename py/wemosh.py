@@ -1,6 +1,13 @@
 import smbus
 import struct
+import time
+import os
+import sys
+import filecmp
+from progress.bar import Bar
 
+IAP = 0
+FW = 1
 
 MOTOR_A = 0
 MOTOR_B = 1
@@ -24,13 +31,20 @@ class WMShield():
             else:
                 return self.bus.read_i2c_block_data(self.addr, cmd, length)
         except IOError:
-            print "Read error"
+            # print "Read error", 
+            # if (cmd != None):
+            #     print "(cmd: 0x%x)" % (cmd)
+            # else:
+            #     print "(cmd: None)"
+            pass
 
     def __write(self, cmd, data):
         try:
-            return self.bus.write_i2c_block_data(self.addr, cmd, data)
+            self.bus.write_i2c_block_data(self.addr, cmd, data)
+            return True
         except IOError:
-            print "Write error"
+            # print "Write error (cmd: 0x%x)" % (cmd)
+            return False
 
     def __parce_motor(self, data):
         return [data[0]] + list(struct.unpack(">H", bytearray(data[1:3])))
@@ -82,5 +96,120 @@ class WMShield():
         if answ != None:
             return struct.unpack("<H", bytearray(answ))[0]
 
+    def boot(self, mode, verify = True):
+        self.__write(0x20, [mode])
+        if verify:
+            time.sleep(0.50)
+            if not (mode == self.get_id()):
+                return False
+        return True
+
+    def get_id(self):
+        answ = self.__read(0x40, 1)
+        if answ != None:
+            return answ[0]
+
     def detect(self):
         return (self.__read() == self.addr)
+
+    def upload(self, pkt_num, data):
+        cmd = int(0x30 | (pkt_num >> 8))
+        pkt_num = int(pkt_num & 0xFF)
+        return self.__write(cmd, [pkt_num] + data)
+
+    def get_fwlen(self):
+        answ = self.__read(0x50, 4)
+        if answ != None:
+            return struct.unpack("<I", bytearray(answ))[0]
+
+    def set_fwlen(self, length, verify = True):
+        print list(bytearray(struct.pack("<I", length)))
+        self.__write(0x50, list(bytearray(struct.pack("<I", length))))
+        if verify:
+            if not (length == self.get_fwlen()):
+                return False
+        return True
+
+    def read(self, length = 31):
+        cmd = 0x30
+        answ = self.__read(cmd, length)
+        return answ
+
+    def read_fw(self, size, path = None):
+        fw = []
+        pkt_len = 30
+        pkts_count = size / pkt_len
+
+        with Bar('Reading', max = pkts_count) as bar:
+            for i in range(pkts_count):
+                res = self.read(pkt_len)
+                if res != None and len(res) > 0:
+                    fw += res
+                    bar.next()
+                else:
+                    print "Error"
+                    print "Total bytes:", len(fw)
+                    return None
+
+            tail = size % pkt_len
+            if (tail > 0):
+                res = self.read(tail)
+                if res != None and len(res) > 0:
+                    fw += res
+                else:
+                    print "Error"
+                    print "Total bytes:", len(fw)
+                    return None
+
+        if path != None:
+            with open(path, "wb") as f:
+                f.write(bytearray(fw))
+
+        # print "fw:", ' '.join('{:02X}'.format(x) for x in fw)
+        return fw
+
+    def write_fw(self, path, verify = True):
+        with open(path, "rb") as f:
+            size = os.path.getsize(path)
+            print "File size: %d bytes" % (size)
+            pkt_len = 30
+            pkt_num = size / pkt_len
+            if size % pkt_len > 0:
+                pkt_num += 1
+
+            with Bar('Writing', max = pkt_num) as bar:
+
+                while size > 0:
+                    data = f.read(pkt_len)
+                    pkt_num -= 1
+
+                    timeout = 3
+                    while ((not self.upload(pkt_num, list(bytearray(data)))) and timeout > 0):
+                        # Waiting for packet is writing
+                        time.sleep(0.1)
+                        timeout -= 1
+                        if pkt_num == 0:
+                            break
+
+                    if not timeout:
+                        return False
+                    
+                    bar.next()
+                    size -= len(data)
+                
+                # Waiting last packet is writing
+                time.sleep(0.1)
+
+        if verify:
+            print "Verification..."
+            size = os.path.getsize(path)
+            if len(self.read_fw(size, "read.bin")) != size:
+                print "Verification failed: size missmatch"
+                return False
+            if not filecmp.cmp(path, "read.bin"):
+                print "Verification failed: content missmatch"
+                return False
+            else:
+                print "FW successfully written"
+
+        return True
