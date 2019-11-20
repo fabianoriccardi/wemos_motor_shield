@@ -156,8 +156,9 @@ static void init_i2c(void)
 
 int main()
 {
-    /* Check boot flag */
-    if (boot_flag != 0xAABBCCDD) {
+    /* Check boot flag and flash first bytes */
+    if (boot_flag != 0xAABBCCDD &&
+        (((*(__IO uint32_t*)MAIN_PROGRAM_START_ADDRESS) & 0x2FFE0000 ) == 0x20000000)) {
         JUMP_TO(MAIN_PROGRAM_START_ADDRESS);
     }
 
