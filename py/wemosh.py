@@ -18,6 +18,7 @@ DIR_CW = 2
 DIR_STOP = 3
 DIR_STANDBY = 4
 
+MAX_FREQ = 31250
 
 class WMShield():
     def __init__(self, addr, bus_num = 1):
@@ -60,7 +61,8 @@ class WMShield():
         else:
             return False
         data = [direction] + list(bytearray(struct.pack(">H", pulse * 100)))
-        self.__write(cmd, data)
+        if not self.__write(cmd, data):
+            return False
         if verify:
             answ = self.motor_get()
             if answ == None:
@@ -85,16 +87,29 @@ class WMShield():
                 return self.__parce_motor(answ[0:3]) + self.__parce_motor(answ[3:6])
 
     def freq_set(self, freq, verify = True):
-        self.__write(0x00, list(bytearray(struct.pack("<H", freq))))
+        data = list(bytearray(struct.pack(">I", freq)))
+        cmd = int(0x00 | (data[0] & 0x0F))
+        if not self.__write(cmd, data[1:]):
+            return False
+        # Frequency is not set precisely due to prescaler discreteness, so allow 1% accuracy.
         if verify:
-            if self.freq_get() != freq:
+            answ = self.freq_get()
+            if answ == None:
+                return False
+            # 0 - set max frequency.
+            if freq != 0:
+                accuracy = abs(1 - answ / float(freq))
+                if accuracy > 1:
+                    return False
+            elif freq == 0 and answ != MAX_FREQ:
                 return False
         return True
 
     def freq_get(self):
-        answ = self.__read(0x00, 2)
+        answ = self.__read(0x00, 4)
         if answ != None:
-            return struct.unpack("<H", bytearray(answ))[0]
+            data = struct.unpack(">I", bytearray(answ))[0]
+            return data
 
     def boot(self, mode, verify = True):
         self.__write(0x20, [mode])
@@ -120,11 +135,11 @@ class WMShield():
     def get_fwlen(self):
         answ = self.__read(0x50, 4)
         if answ != None:
-            return struct.unpack("<I", bytearray(answ))[0]
+            return struct.unpack(">I", bytearray(answ))[0]
 
     def set_fwlen(self, length, verify = True):
-        print list(bytearray(struct.pack("<I", length)))
-        self.__write(0x50, list(bytearray(struct.pack("<I", length))))
+        print list(bytearray(struct.pack(">I", length)))
+        self.__write(0x50, list(bytearray(struct.pack(">I", length))))
         if verify:
             if not (length == self.get_fwlen()):
                 return False
