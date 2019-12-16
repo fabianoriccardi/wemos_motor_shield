@@ -1,6 +1,7 @@
 #include "stm32f030x6.h"
 #include "user_i2c.h"
 #include "tb6612.h"
+#include "boot.h"
 
 #define I2C_BASE_ADDR           0x2d
 
@@ -15,6 +16,9 @@
 #define ERR_TIMEOUT             (-1)
 #define ERR_ABORTED             (-2)
 #define ERR_NOTIMPL             (-3)
+
+
+__IO uint32_t VectorTable[48] __attribute__ ((section (".ram_vector")));
 
 
 static uint8_t buf[MAX_PKT_LEN];
@@ -167,6 +171,17 @@ static void init_pwm(void)
 
 int main()
 {
+    /* Relocate the vector table to the internal SRAM at 0x20000000 */
+    __disable_irq();
+    for (uint8_t i = 0; i < 48; i++) {
+        VectorTable[i] = *(__IO uint32_t *)(MAIN_PROGRAM_START_ADDRESS + (i << 2));
+    }
+    /* Remap SRAM at 0x00000000 */
+    SYSCFG->CFGR1 |= SYSCFG_CFGR1_MEM_MODE;
+    /* Enable the SYSCFG peripheral clock */
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGCOMPEN;
+    __enable_irq();
+
     init_i2c();
     init_pwm();
 

@@ -1,8 +1,8 @@
 #include "stm32f030x6.h"
+#include "common.h"
 #include "user_i2c.h"
 #include "tb6612.h"
-
-#define array_len(x) (sizeof(x)/sizeof(0[x]))
+#include "boot.h"
 
 
 typedef struct {
@@ -16,6 +16,7 @@ static uint8_t set_freq(uint8_t *data, uint8_t size);
 static uint8_t get_freq(uint8_t *data, uint8_t size);
 static uint8_t set_motor(uint8_t *data, uint8_t size);
 static uint8_t get_motor(uint8_t *data, uint8_t size);
+static uint8_t get_id(uint8_t *data, uint8_t size);
 
 /*
 CMD     | R/W  | PARAMETER                      | DESCRIPTION
@@ -25,6 +26,8 @@ CMD     | R/W  | PARAMETER                      | DESCRIPTION
 0x10    | R    |                                | Get motor A
 0x11    | W    | 8bit dir, 16bit duty (%)       | Set motor B
 0x11    | R    |                                | Get motor B
+0x20    | W    | 8bit id                        | Boot mode selection
+0x40    | R    |                                | Get active boot mode
 
 PARAMETERs:
 "dir" - motor run direction:
@@ -35,6 +38,9 @@ PARAMETERs:
     0x04 - Standby
 "duty" - PWM duty cycle: 0 - 100%
 "frequency" - PWM frequency: 1 - 31250Hz
+"id" - Boot mode selection:
+    0x00 - boot IAP
+    0x01 - boot main FW
 */
 
 handler_t commands[] = {
@@ -42,6 +48,8 @@ handler_t commands[] = {
     {0x00, 0xF0, CMD_READ,  get_freq},
     {0x10, 0xFE, CMD_WRITE, set_motor},
     {0x10, 0xFE, CMD_READ,  get_motor},
+    {0x20, 0xFF, CMD_WRITE, boot_cmd},
+    {0x40, 0xFF, CMD_READ,  get_id},
 };
 
 static inline uint16_t reverse16(uint16_t value)
@@ -77,6 +85,14 @@ static uint8_t get_freq(uint8_t *data, uint8_t size)
     *(uint32_t *)data = reverse32(Get_Freq());
 
     return 4;
+}
+
+static uint8_t get_id(uint8_t *data, uint8_t size)
+{
+    if (size < 1) return 0;
+   *(uint8_t *)data = FW_ID;
+
+    return 1;
 }
 
 static uint8_t set_motor(uint8_t *data, uint8_t size)

@@ -61,8 +61,10 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM (xrw)		: ORIGIN = 0x20000000, LENGTH = 4K
-  ROM (rx)		: ORIGIN = 0x8000000, LENGTH = 16K
+  VECTOR (xrw)  : ORIGIN = 0x20000000, LENGTH = 192
+  FLAGS (xrw)   : ORIGIN = 0x200000C0, LENGTH = 8
+  RAM (xrw)     : ORIGIN = 0x200000C8, LENGTH = 4K - 200
+  ROM (rx)      : ORIGIN = 0x08000C00, LENGTH = 16K - 3K
 }
 
 /* Sections */
@@ -145,7 +147,7 @@ SECTIONS
     . = ALIGN(4);
   } >ROM
 
-  /* Used by the startup to initialize data */
+    /* Used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
   /* Initialized data sections into RAM memory */
@@ -160,7 +162,22 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
   } >RAM AT> ROM
 
-  
+  /* Vector table relocated to RAM memory */
+  .ram_vector (NOLOAD) :
+  {
+    . = ALIGN(4);
+    KEEP(*(.ram_vector))
+    . = ALIGN(4);
+  } >VECTOR
+
+  /* Boot flags section into RAM memory */
+  .ram_flags (NOLOAD) :
+  {
+    . = ALIGN(4);
+    KEEP(*(.ram_flags))
+    . = ALIGN(4);
+  } >FLAGS
+
   /* Uninitialized data section into RAM memory */
   . = ALIGN(4);
   .bss :
