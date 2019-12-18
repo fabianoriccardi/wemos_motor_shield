@@ -21,5 +21,4 @@
 #define AF5                     0x05
 #define AF6                     0x06
 #define AF7                     0x07
-#define AFRH(af, pin)           ((af) << (4 * ((pin) - 8)))
-#define AFRL(af, pin)           ((af) << (4 * (pin)))
+#define AFR(af, pin)            ((af) << (4 * (((pin) % 8))))
