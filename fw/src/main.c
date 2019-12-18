@@ -148,6 +148,22 @@ static void init_gpio(void)
     GPIOF->PUPDR |= PUPDR(PULL_UP, PIN_AD0) | PUPDR(PULL_UP, PIN_AD1);
 }
 
+static void init_exti(void)
+{
+    /* External interrupt is set by default to PORTA */
+    // SYSCFG->EXTICR[(PIN_IRQA / 4)] |= (1 << ((PIN_IRQA % 4) * 4));
+    // SYSCFG->EXTICR[(PIN_IRQB / 4)] |= (1 << ((PIN_IRQB % 4) * 4));
+
+    /* Enable the 'falling edge' trigger */
+    EXTI->IMR |= (1 << PIN_IRQA) | (1 << PIN_IRQB);
+    EXTI->FTSR |= (1 << PIN_IRQA) | (1 << PIN_IRQB);
+
+    /* Enable the NVIC interrupt and set it low priority. */
+    NVIC_SetPriority(EXTI4_15_IRQn, 0x03);
+    NVIC_EnableIRQ(EXTI4_15_IRQn);
+}
+
+
 static void init_i2c(void)
 {
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
@@ -191,6 +207,7 @@ int main()
     __enable_irq();
 
     init_gpio();
+    init_exti();
     init_i2c();
     init_pwm();
 

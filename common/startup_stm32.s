@@ -128,9 +128,9 @@ g_pfnVectors:
 	.word	0
 	.word	0
 	.word	0
-	.word	0
-	.word	0
-	.word	0
+	.word	EXTI0_1_IRQ_handler
+	.word	EXTI2_3_IRQ_handler
+	.word	EXTI4_15_IRQ_handler
 	.word	0
 	.word	0
 	.word	0
@@ -240,6 +240,15 @@ g_pfnVectors:
 
 	.weak	SysTick_Handler
 	.thumb_set SysTick_Handler,Default_Handler
+
+	.weak	EXTI0_1_IRQ_handler
+	.thumb_set EXTI0_1_IRQ_handler,Default_Handler
+
+	.weak	EXTI2_3_IRQ_handler
+	.thumb_set EXTI2_3_IRQ_handler,Default_Handler
+
+	.weak	EXTI4_15_IRQ_handler
+	.thumb_set EXTI4_15_IRQ_handler,Default_Handler
 
 	.weak	SystemInit
 
