@@ -2,14 +2,10 @@
 #include "user_i2c.h"
 #include "tb6612.h"
 #include "boot.h"
+#include "gpio.h"
+#include "pins.h"
 
 #define I2C_BASE_ADDR           0x2d
-
-#define MODE_IN                 0x00
-#define MODE_OUT                0x01
-#define MODE_AF                 0x02
-#define MODE_AN                 0x03
-#define MODER(mode, pin)        ((mode) << (2 * (pin)))
 
 #define MAX_PKT_LEN             32
 
@@ -131,33 +127,44 @@ static int receive_cmd(uint8_t *buf, uint8_t size)
     return len;
 }
 
+static void init_gpio(void)
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOFEN;
+
+    /* TB6612 pins */
+    GPIOA->MODER |= MODER(MODE_OUT, PIN_AIN1) | MODER(MODE_OUT, PIN_AIN2) |
+        MODER(MODE_OUT, PIN_BIN1) | MODER(MODE_OUT, PIN_BIN2) |
+        MODER(MODE_AF, PIN_PWMA) | MODER(MODE_AF, PIN_PWMB) |
+        MODER(MODE_OUT, PIN_STBY);
+    GPIOA->AFR[0] |= AFRL(AF1, PIN_PWMA) | AFRL(AF1, PIN_PWMB);
+    // GPIOA->AFR[0] |= (1 << GPIO_AFRH_AFRH6_Pos) | (1 << GPIO_AFRH_AFRH7_Pos);
+
+    /* EXTI pins */
+    GPIOA->MODER |= MODER(MODE_IN, PIN_IRQA) | MODER(MODE_IN, PIN_IRQA);
+
+    /* Address selection pins */
+    GPIOF->MODER |= MODER(MODE_IN, PIN_AD0) | MODER(MODE_IN, PIN_AD1);
+    GPIOF->PUPDR |= PUPDR(PULL_UP, PIN_AD0) | PUPDR(PULL_UP, PIN_AD1);
+}
+
 static void init_i2c(void)
 {
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-    RCC->APB1ENR |= RCC_APB1ENR_I2C1EN | RCC_APB1ENR_TIM3EN;
+    RCC->APB1ENR |= RCC_APB1ENR_I2C1EN;
 
-    GPIOA->MODER |= MODER(MODE_OUT, PIN_AIN1) | MODER(MODE_OUT, PIN_AIN2) |
-        MODER(MODE_OUT, PIN_BIN1) | MODER(MODE_OUT, PIN_BIN2) |
-        MODER(MODE_AF, PIN_SCL) | MODER(MODE_AF, PIN_SDA) |
-        MODER(MODE_AF, PIN_PWMA) | MODER(MODE_AF, PIN_PWMB) |
-        MODER(MODE_OUT, PIN_STBY);
+    GPIOA->MODER |= MODER(MODE_AF, PIN_SCL) | MODER(MODE_AF, PIN_SDA);
+    GPIOA->AFR[1] |= AFRH(AF4, PIN_SCL) | AFRH(AF4, PIN_SDA);
+    // GPIOA->AFR[1] |= (4 << GPIO_AFRH_AFRH1_Pos) | (4 << GPIO_AFRH_AFRH2_Pos);
+    GPIOA->OTYPER |= OTYPER(OTYPE_OD, PIN_SCL) | OTYPER(OTYPE_OD, PIN_SDA);
+    GPIOA->PUPDR |= PUPDR(PULL_UP, PIN_SCL) | PUPDR(PULL_UP, PIN_SDA);
 
-    GPIOA->AFR[0] |= (1 << GPIO_AFRH_AFRH6_Pos) | (1 << GPIO_AFRH_AFRH7_Pos);
-    GPIOA->AFR[1] |= (4 << GPIO_AFRH_AFRH1_Pos) | (4 << GPIO_AFRH_AFRH2_Pos);
-
-    GPIOA->OTYPER |= GPIO_OTYPER_OT_9 | GPIO_OTYPER_OT_10;
-    GPIOA->PUPDR |= GPIO_PUPDR_PUPDR9_0 | GPIO_PUPDR_PUPDR10_0;
-
-    RCC->AHBENR |= RCC_AHBENR_GPIOFEN;
-    GPIOF->MODER  |= MODER(MODE_IN, 0) | MODER(MODE_IN, 1);
-    GPIOF->PUPDR  |= GPIO_PUPDR_PUPDR0_0 | GPIO_PUPDR_PUPDR1_0;
     I2C1->OAR1 = I2C_OAR1_OA1EN | ((I2C_BASE_ADDR + (GPIOF->IDR & 3)) << 1);
-    
     I2C1->CR1 = I2C_CR1_PE;
 }
 
 static void init_pwm(void)
 {
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
 
     TIM3->CCMR1 = TIM_CCMR1_OC1PE | TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1 |
         TIM_CCMR1_OC2PE | TIM_CCMR1_OC2M_2 | TIM_CCMR1_OC2M_1;
@@ -182,6 +189,7 @@ int main()
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGCOMPEN;
     __enable_irq();
 
+    init_gpio();
     init_i2c();
     init_pwm();
 

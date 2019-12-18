@@ -2,18 +2,7 @@
 #define __TB6612_H
 
 #include <stdint.h>
-
-#define PIN_AIN2                0
-#define PIN_AIN1                1
-#define PIN_STBY                2
-#define PIN_BIN1                3
-#define PIN_BIN2                4
-#define PIN_PWMA                6
-#define PIN_PWMB                7
-#define PIN_SCL                 9
-#define PIN_SDA                 10
-#define PIN_SWD                 13
-#define PIN_SWC                 14
+#include "pins.h"
 
 #define MOTOR_A                 0
 #define MOTOR_B                 1

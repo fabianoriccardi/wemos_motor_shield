@@ -1,5 +1,6 @@
 #include "stm32f030x6.h"
 #include "tb6612.h"
+#include "pins.h"
 
 #define pin_set(pin)        GPIOA->BSRR = 1u << (pin)
 #define pin_clear(pin)      GPIOA->BRR = 1u << (pin)
