@@ -63,7 +63,7 @@ MEMORY
 {
   FLAGS (xrw) : ORIGIN = 0x200000C0, LENGTH = 8
   RAM (xrw)		: ORIGIN = 0x200000C8, LENGTH = 4K - 200
-  ROM (rx)		: ORIGIN = 0x8000000, LENGTH = 3K
+  ROM (rx)		: ORIGIN = 0x8000000, LENGTH = 4K
 }
 
 /* Sections */

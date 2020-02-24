@@ -64,7 +64,7 @@ MEMORY
   VECTOR (xrw)  : ORIGIN = 0x20000000, LENGTH = 192
   FLAGS (xrw)   : ORIGIN = 0x200000C0, LENGTH = 8
   RAM (xrw)     : ORIGIN = 0x200000C8, LENGTH = 4K - 200
-  ROM (rx)      : ORIGIN = 0x08000C00, LENGTH = 16K - 3K
+  ROM (rx)      : ORIGIN = 0x08001000, LENGTH = 16K - 4K
 }
 
 /* Sections */
