@@ -18,31 +18,37 @@ static uint8_t set_motor(uint8_t *data, uint8_t size);
 static uint8_t get_motor(uint8_t *data, uint8_t size);
 static uint8_t get_id(uint8_t *data, uint8_t size);
 
-/*
-CMD     | R/W  | PARAMETER                      | DESCRIPTION
-0x0X    | W    | 28bit frequency                | Set PWM frequency
-0x0X    | R    |                                | Get PWM frequency
-0x10    | W    | 8bit dir, 16bit duty (%)       | Set motor A
-0x10    | R    |                                | Get motor A
-0x11    | W    | 8bit dir, 16bit duty (%)       | Set motor B
-0x11    | R    |                                | Get motor B
-0x20    | W    | 8bit id                        | Boot mode selection
-0x40    | R    |                                | Get active boot mode
+/************** PROTOCOL DESCRIPTION ******************************
+ * EACH "WRITE" MESSAGE IS COMPOSED BY 4 BYTES.
+ * READ/WRITE COMMAND IS SENT IN THE I2C "START BYTE" (https://i2c.info)
+ * THIS MODULE SUPPORT MULTIPLE "START" MESSAGES OF I2C BEFORE
+ * ONE "STOP MESSAGE".
+ *
+ *  CMD     | R/W  | PARAMETER                      | DESCRIPTION
+ *  0x0X    | W    | 28bit frequency                | Set PWM frequency
+ *  0x0X    | R    |                                | Get PWM frequency
+ *  0x10    | W    | 8bit dir, 16bit duty (%)       | Set motor A
+ *  0x10    | R    |                                | Get motor A
+ *  0x11    | W    | 8bit dir, 16bit duty (%)       | Set motor B
+ *  0x11    | R    |                                | Get motor B
+ *  0x20    | W    | 8bit id                        | Boot mode selection
+ *  0x40    | R    |                                | Get active boot mode
+ *  
+ *  PARAMETERs:
+ *  "dir" - motor run direction:
+ *      0x00 - Break
+ *      0x01 - CCW
+ *      0x02 - CW
+ *      0x03 - Stop
+ *      0x04 - Standby
+ *  "duty" - PWM duty cycle: 0 - 100%
+ *  "frequency" - PWM frequency: 1 - 31250Hz
+ *  "id" - Boot mode selection:
+ *      0x00 - boot IAP
+ *      0x01 - boot main FW
+*********************************************************************/
 
-PARAMETERs:
-"dir" - motor run direction:
-    0x00 - Break
-    0x01 - CCW
-    0x02 - CW
-    0x03 - Stop
-    0x04 - Standby
-"duty" - PWM duty cycle: 0 - 100%
-"frequency" - PWM frequency: 1 - 31250Hz
-"id" - Boot mode selection:
-    0x00 - boot IAP
-    0x01 - boot main FW
-*/
-
+//   addr  mask  cmd        handler
 handler_t commands[] = {
     {0x00, 0xF0, CMD_WRITE, set_freq},
     {0x00, 0xF0, CMD_READ,  get_freq},
