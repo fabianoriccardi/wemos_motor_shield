@@ -9,6 +9,8 @@ Features:
 * Linux driver as a Python module is provided (tested with a Raspberry Pi);
 * Custom I2C bootloader. After bootloader installation, shield's firmware can be updated directly from the connected Linux-based board (tested with a Raspberry Pi).
 
+NOTE: as already mentioned [here](https://github.com/pbugalski/wemos_motor_shield/issues/7), with respect to the original firmware, the Motor A directions are inverted (now it is coeherent with pin nomenclature and motor B behaviour).
+
 # Requirements
 You need the [ARM toolchain](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads) and an environment with *make* (on windows you can install [minGW](http://www.mingw.org/)).
 
